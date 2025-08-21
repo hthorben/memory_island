@@ -610,14 +610,18 @@ module axi_memory_island_tb #(
     .NarrowExtraBF    (NarrowExtraBF),
     .WordsPerBank     (WordsPerBank),
     .MemorySimInit    ("zeros"),
-    .BankAccessLatency(BankAccessLatency)
+    .BankAccessLatency(BankAccessLatency),
+
+    .NumPhysicalBanks(1)
   ) i_dut (
     .clk_i           (clk),
     .rst_ni          (rst_n),
     .axi_narrow_req_i(dut_narrow_req),
     .axi_narrow_rsp_o(dut_narrow_rsp),
     .axi_wide_req_i  (dut_wide_req),
-    .axi_wide_rsp_o  (dut_wide_rsp)
+    .axi_wide_rsp_o  (dut_wide_rsp),
+    .powergate_i (),
+    .deepsleep_i ()
   );
 
   // Golden model

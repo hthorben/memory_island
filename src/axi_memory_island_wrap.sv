@@ -60,7 +60,16 @@ module axi_memory_island_wrap #(
   // verilog_lint: waive explicit-parameter-storage-type
   parameter              MemorySimInit     = "none",
   /// Number of cycles a memory macro takes to respond to a read request
-  parameter int unsigned BankAccessLatency = 1
+  parameter int unsigned BankAccessLatency = 1,
+
+  // To be used as number of narrow banks
+  parameter int unsigned NWDivisor = WideDataWidth / NarrowDataWidth,
+  // The amount of physical memory banks inside each narrow bank
+  parameter int unsigned NumPhysicalBanks = 1,
+  // The granularity of the power gating, i.e. how many physical banks are controlled by a signal (has to be a power of 2)
+  parameter int unsigned GatingGranularity = 1,
+  // The amount of cables needed to achieve the desired gating granularity
+  parameter int unsigned PWRSigWidth = (NWDivisor*NumPhysicalBanks*NumWideBanks) / GatingGranularity
 ) (
   input logic clk_i,
   input logic rst_ni,
@@ -69,9 +78,12 @@ module axi_memory_island_wrap #(
   output axi_narrow_rsp_t [NumNarrowReq-1:0] axi_narrow_rsp_o,
 
   input  axi_wide_req_t [NumWideReq-1:0] axi_wide_req_i,
-  output axi_wide_rsp_t [NumWideReq-1:0] axi_wide_rsp_o
+  output axi_wide_rsp_t [NumWideReq-1:0] axi_wide_rsp_o,
+
+  input logic [PWRSigWidth-1:0] powergate_i,
+  input logic [PWRSigWidth-1:0] deepsleep_i
 );
-  localparam int unsigned NWDivisor = WideDataWidth / NarrowDataWidth;
+  //localparam int unsigned NWDivisor = WideDataWidth / NarrowDataWidth;
   localparam int unsigned BankAddrMemWidth = $clog2(WordsPerBank);
   localparam int unsigned NarrowStrbWidth = NarrowDataWidth / 8;
   localparam int unsigned WideStrbWidth = WideDataWidth / 8;
@@ -248,7 +260,10 @@ module axi_memory_island_wrap #(
     .SpillRspBank        (SpillRspBank),
     .WidePriorityWait    (WidePriorityWait),
     .MemorySimInit       (MemorySimInit),
-    .BankAccessLatency   (BankAccessLatency)
+    .BankAccessLatency   (BankAccessLatency),
+    .NumPhysicalBanks    (NumPhysicalBanks),
+    .GatingGranularity   (GatingGranularity),
+    .PWRSigWidth         (PWRSigWidth)
   ) i_memory_island (
     .clk_i,
     .rst_ni,
@@ -268,7 +283,11 @@ module axi_memory_island_wrap #(
     .wide_wdata_i   (wide_wdata),
     .wide_strb_i    (wide_strb),
     .wide_rvalid_o  (wide_rvalid),
-    .wide_rdata_o   (wide_rdata)
+    .wide_rdata_o   (wide_rdata),
+
+    .powergate_i    (powergate_i),
+    .deepsleep_i    (deepsleep_i)
+
   );
 
 endmodule
