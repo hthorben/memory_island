@@ -680,8 +680,8 @@ module memory_island_core #(
       logic [NumPhysicalBanks-1:0] powergate_narrow;
 
       for (genvar k = 0; k < NumPhysicalBanks; k++) begin : assign_pwr_control_sigs
-        assign deepsleep_narrow[k] = deepsleep_i[ (j/GatingGranularity) + k*(NWDivisor/GatingGranularity) + i*((NWDivisor*NumPhysicalBanks) / GatingGranularity)];
-        assign powergate_narrow[k] = powergate_i[ (j/GatingGranularity) + k*(NWDivisor/GatingGranularity) + i*((NWDivisor*NumPhysicalBanks) / GatingGranularity)];
+        assign deepsleep_narrow[k] = deepsleep_i[ (j/GatingGranularity) + ((k*NWDivisor)/GatingGranularity) + ((i*NWDivisor*NumPhysicalBanks) / GatingGranularity)];
+        assign powergate_narrow[k] = powergate_i[ (j/GatingGranularity) + ((k*NWDivisor)/GatingGranularity) + ((i*NWDivisor*NumPhysicalBanks) / GatingGranularity)];
       end
 
       // Memory bank
