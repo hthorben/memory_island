@@ -24,7 +24,7 @@ packages:
     - common_verification
     - tech_cells_generic
   common_cells_pw:
-    revision: 94ac337b61c43dcc22856ca3219fd22659450fe4
+    revision: ca81796336924d777a992d9bd044c604568a822a
     version: null
     source:
       Git: https://github.com/hthorben/common_cells.git

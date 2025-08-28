@@ -70,7 +70,8 @@ module axi_memory_island_wrap #(
   parameter int unsigned NumPhysicalBanks = 1,
   // The amount of cables needed to achieve the desired gating granularity
   parameter int unsigned PWRSigWidth = (NWDivisor*NumPhysicalBanks*NumWideBanks) / GatingGranularity,
-  parameter type         impl_in_t    = logic
+  parameter type         impl_in_t    = logic,
+  parameter int unsigned Pwr_Sigs     = 0
 ) (
   input logic clk_i,
   input logic rst_ni,
@@ -264,7 +265,8 @@ module axi_memory_island_wrap #(
     .NumPhysicalBanks    (NumPhysicalBanks),
     .GatingGranularity   (GatingGranularity),
     .PWRSigWidth         (PWRSigWidth),
-    .impl_in_t           (impl_in_t)
+    .impl_in_t           (impl_in_t),
+    .Pwr_Sigs            (Pwr_Sigs)
   ) i_memory_island (
     .clk_i,
     .rst_ni,

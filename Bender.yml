@@ -9,7 +9,7 @@ package:
     - "Moritz Scherer <moritz@mosaic-soc.com>"
 
 dependencies:
-  common_cells_pw:       { git: "https://github.com/hthorben/common_cells.git",              rev: 94ac337b61c43dcc22856ca3219fd22659450fe4 }
+  common_cells_pw:       { git: "https://github.com/hthorben/common_cells.git",              rev: ca81796336924d777a992d9bd044c604568a822a }
   tech_cells_generic_pw: { git: "https://github.com/hthorben/tech_cells_generic.git",        rev: b4928f09a7a3355cc4f455e673e0aac088bfad38 }
   common_cells:         { git: "https://github.com/pulp-platform/common_cells.git",         version: 1.37.0 }
   tech_cells_generic:   { git: "https://github.com/pulp-platform/tech_cells_generic.git",   version: 0.2.13 }

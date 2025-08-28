@@ -60,6 +60,8 @@ module axi_memory_island_tb #(
   localparam int unsigned GatingGranularity = NWDivisor*NumWideBanks;
   // The amount of cables needed to achieve the desired gating granularity
   localparam int unsigned PWRSigWidth = (NWDivisor*NumPhysicalBanks*NumWideBanks) / GatingGranularity;
+  // simulate power gating
+  localparam int unsigned Pwr_Sigs     = 1;
 
 
 
@@ -577,7 +579,8 @@ module axi_memory_island_tb #(
     .NumPhysicalBanks  (NumPhysicalBanks),
     .GatingGranularity (GatingGranularity),
     .PWRSigWidth       (PWRSigWidth),
-    .impl_in_t         (impl_in_t)
+    .impl_in_t         (impl_in_t),
+    .Pwr_Sigs          (Pwr_Sigs)
   ) i_dut (
     .clk_i           (clk),
     .rst_ni          (rst_n),
