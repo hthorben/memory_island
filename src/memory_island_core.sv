@@ -688,7 +688,7 @@ module memory_island_core #(
         .NumPorts      (1),
         .Latency       (BankAccessLatency),
         .SimInit       (MemorySimInit),
-        .NumLogicBanks (NumPhysicalBanks),
+        .NumPhysBanks  (NumPhysicalBanks),
         .impl_in_t     (impl_in_t)
       ) i_bank (
         .clk_i,
