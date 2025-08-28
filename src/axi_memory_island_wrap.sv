@@ -64,12 +64,13 @@ module axi_memory_island_wrap #(
 
   // To be used as number of narrow banks
   parameter int unsigned NWDivisor = WideDataWidth / NarrowDataWidth,
+  // The granularity of the power gating, i.e. how many physical banks are controlled by a signal (has to be a power of 2)
+  parameter int unsigned GatingGranularity = NWDivisor*NumWideBanks,
   // The amount of physical memory banks inside each narrow bank
   parameter int unsigned NumPhysicalBanks = 1,
-  // The granularity of the power gating, i.e. how many physical banks are controlled by a signal (has to be a power of 2)
-  parameter int unsigned GatingGranularity = 1,
   // The amount of cables needed to achieve the desired gating granularity
-  parameter int unsigned PWRSigWidth = (NWDivisor*NumPhysicalBanks*NumWideBanks) / GatingGranularity
+  parameter int unsigned PWRSigWidth = (NWDivisor*NumPhysicalBanks*NumWideBanks) / GatingGranularity,
+  parameter type         impl_in_t    = logic
 ) (
   input logic clk_i,
   input logic rst_ni,
@@ -80,8 +81,7 @@ module axi_memory_island_wrap #(
   input  axi_wide_req_t [NumWideReq-1:0] axi_wide_req_i,
   output axi_wide_rsp_t [NumWideReq-1:0] axi_wide_rsp_o,
 
-  input logic [PWRSigWidth-1:0] powergate_i,
-  input logic [PWRSigWidth-1:0] deepsleep_i
+  input  impl_in_t [PWRSigWidth-1:0]     impl_i
 );
   //localparam int unsigned NWDivisor = WideDataWidth / NarrowDataWidth;
   localparam int unsigned BankAddrMemWidth = $clog2(WordsPerBank);
@@ -263,7 +263,8 @@ module axi_memory_island_wrap #(
     .BankAccessLatency   (BankAccessLatency),
     .NumPhysicalBanks    (NumPhysicalBanks),
     .GatingGranularity   (GatingGranularity),
-    .PWRSigWidth         (PWRSigWidth)
+    .PWRSigWidth         (PWRSigWidth),
+    .impl_in_t           (impl_in_t)
   ) i_memory_island (
     .clk_i,
     .rst_ni,
@@ -285,8 +286,7 @@ module axi_memory_island_wrap #(
     .wide_rvalid_o  (wide_rvalid),
     .wide_rdata_o   (wide_rdata),
 
-    .powergate_i    (powergate_i),
-    .deepsleep_i    (deepsleep_i)
+    .impl_i      (impl_i)
 
   );
 

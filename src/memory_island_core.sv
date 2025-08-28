@@ -55,8 +55,10 @@ module memory_island_core #(
   parameter int unsigned BankAccessLatency = 1,
 
   parameter int unsigned NumPhysicalBanks = 32'd1,
-  parameter int unsigned GatingGranularity = 0,
-  parameter int unsigned PWRSigWidth = (NWDivisor*NumPhysicalBanks*NumWideBanks) >> GatingGranularity
+  parameter int unsigned GatingGranularity = NWDivisor*NumWideBanks,
+  parameter int unsigned PWRSigWidth = (NWDivisor*NumPhysicalBanks*NumWideBanks) / GatingGranularity,
+
+  parameter type         impl_in_t    = logic
 ) (
   input logic clk_i,
   input logic rst_ni,
@@ -81,9 +83,7 @@ module memory_island_core #(
   output logic [NumWideReq-1:0]                    wide_rvalid_o,
   output logic [NumWideReq-1:0][WideDataWidth-1:0] wide_rdata_o,
 
-  input logic [PWRSigWidth-1:0] powergate_i,
-  input logic [PWRSigWidth-1:0] deepsleep_i
-
+  input  impl_in_t [PWRSigWidth-1:0]     impl_i
 );
 
   initial begin
@@ -219,8 +219,6 @@ module memory_island_core #(
   logic [NumWideBanks-1:0][NWDivisor-1:0][cf_math_pkg::idx_width(WidePriorityWait)-1:0]
       wide_priority_d, wide_priority_q;
 
-
-  //logic []
 
   for (genvar i = 0; i < NumNarrowReq; i++) begin : gen_narrow_entry_cuts
     mem_req_multicut #(
@@ -676,12 +674,10 @@ module memory_island_core #(
         .rdata_o (rdata_bank[i][j])
       );
 
-      logic [NumPhysicalBanks-1:0] deepsleep_narrow;
-      logic [NumPhysicalBanks-1:0] powergate_narrow;
+      impl_in_t [NumPhysicalBanks-1:0] impl_narrow;
 
       for (genvar k = 0; k < NumPhysicalBanks; k++) begin : assign_pwr_control_sigs
-        assign deepsleep_narrow[k] = deepsleep_i[ (j/GatingGranularity) + ((k*NWDivisor)/GatingGranularity) + ((i*NWDivisor*NumPhysicalBanks) / GatingGranularity)];
-        assign powergate_narrow[k] = powergate_i[ (j/GatingGranularity) + ((k*NWDivisor)/GatingGranularity) + ((i*NWDivisor*NumPhysicalBanks) / GatingGranularity)];
+        assign impl_narrow[k] = impl_i[ (j/GatingGranularity) + ((k*NWDivisor*NumWideBanks)/GatingGranularity) + ((i*NWDivisor) / GatingGranularity)];
       end
 
       // Memory bank
@@ -692,7 +688,8 @@ module memory_island_core #(
         .NumPorts      (1),
         .Latency       (BankAccessLatency),
         .SimInit       (MemorySimInit),
-        .NumLogicBanks (NumPhysicalBanks)
+        .NumLogicBanks (NumPhysicalBanks),
+        .impl_in_t     (impl_in_t)
       ) i_bank (
         .clk_i,
         .rst_ni,
@@ -703,8 +700,7 @@ module memory_island_core #(
         .be_i   (strb_bank_spill[i][j]),
         .rdata_o(rdata_bank_spill[i][j]),
 
-        .deepsleep_i (deepsleep_narrow),
-        .powergate_i (powergate_narrow)
+        .impl_i (impl_narrow)
       );
 
       // Shift reg for wide rvalid

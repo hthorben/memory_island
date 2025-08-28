@@ -29,7 +29,7 @@ module axi_memory_island_tb #(
   parameter time         TestTime          = 8ns,
 
   localparam int unsigned TestRegionStart = 0,
-  localparam int unsigned TestRegionEnd   = 16384
+  localparam int unsigned TestRegionEnd   = 2097151 //16384
 ) ();
 
   localparam int unsigned TotalNumberOfWords = WordsPerBank * NumWideBanks * WideDataWidth /
@@ -204,24 +204,24 @@ module axi_memory_island_tb #(
         // push write queue on actual AW
         if (aw_hs[i] && axi_narrow_req[i].aw.id == id) begin
           regions_being_written[i][id].push_back(write_range[i]);
-          // $display("writing to [%x, %x]", write_range[i].start_addr, write_range[i].end_addr);
+           $display("writing to [%x, %x]", write_range[i].start_addr, write_range[i].end_addr);
         end
         // pop write queue on B
         if (axi_narrow_rsp[i].b_valid && filtered_narrow_req[i].b_ready &&
             axi_narrow_rsp[i].b.id == id) begin
           tmp_write[i] = regions_being_written[i][id].pop_front();
-          // $display("done writing [%x, %x]",tmp_write[i].start_addr, tmp_write[i].end_addr);
+           $display("done writing [%x, %x]",tmp_write[i].start_addr, tmp_write[i].end_addr);
         end
         // push read queue on actual AR
         if (ar_hs[i] && axi_narrow_req[i].ar.id == id) begin
           regions_being_read[i][id].push_back(read_range[i]);
-          // $display("reading from [%x, %x]", read_range[i].start_addr, read_range[i].end_addr);
+           $display("reading from [%x, %x]", read_range[i].start_addr, read_range[i].end_addr);
         end
         // pop read queue on last R
         if (axi_narrow_rsp[i].r_valid && filtered_narrow_req[i].r_ready &&
             axi_narrow_rsp[i].r.last && axi_narrow_rsp[i].r.id == id) begin
           tmp_read[i] = regions_being_read[i][id].pop_front();
-          // $display("done reading [%x, %x]",tmp_read[i].start_addr, tmp_read[i].end_addr);
+           $display("done reading [%x, %x]",tmp_read[i].start_addr, tmp_read[i].end_addr);
         end
         read_len[i][id]  = regions_being_read[i][id].size();
         write_len[i][id] = regions_being_written[i][id].size();
@@ -576,6 +576,41 @@ module axi_memory_island_tb #(
     );
   end
 
+
+  // To be used as number of narrow banks
+  localparam int unsigned NWDivisor = WideDataWidth / NarrowDataWidth;
+  // The amount of physical memory banks inside each narrow bank
+  localparam int unsigned NumPhysicalBanks = 4;
+  // The granularity of the power gating, i.e. how many physical banks are controlled by a signal (has to be a power of 2)
+  localparam int unsigned GatingGranularity = NWDivisor*NumWideBanks;
+  // The amount of cables needed to achieve the desired gating granularity
+  localparam int unsigned PWRSigWidth = (NWDivisor*NumPhysicalBanks*NumWideBanks) / GatingGranularity;
+
+  // Implementation type for Power Gating and Deppesleep ports
+  typedef struct packed {
+     logic deepsleep;
+     logic powergate;
+  } impl_in_t;
+
+  impl_in_t [PWRSigWidth-1:0] impl_o;
+
+  for (genvar i = 0; i < PWRSigWidth; i++) begin : gen_pwr_assignment
+    if (i == 1) begin
+      assign impl_o[i].deepsleep = 0;
+      assign impl_o[i].powergate = 0;
+    end else if (i == 2) begin
+      assign impl_o[i].deepsleep = 0;
+      assign impl_o[i].powergate = 0;
+    end else if (i == 3) begin
+      assign impl_o[i].deepsleep = 0;
+      assign impl_o[i].powergate = 0;
+    end else begin
+      assign impl_o[i].deepsleep = 0;
+      assign impl_o[i].powergate = 0;
+    end
+  end
+
+
   // DUT
   axi_memory_island_wrap #(
     .AddrWidth       (AddrWidth),
@@ -612,7 +647,11 @@ module axi_memory_island_tb #(
     .MemorySimInit    ("zeros"),
     .BankAccessLatency(BankAccessLatency),
 
-    .NumPhysicalBanks(1)
+    .NWDivisor         (NWDivisor),
+    .NumPhysicalBanks  (NumPhysicalBanks),
+    .GatingGranularity (GatingGranularity),
+    .PWRSigWidth       (PWRSigWidth),
+    .impl_in_t         (impl_in_t)
   ) i_dut (
     .clk_i           (clk),
     .rst_ni          (rst_n),
@@ -620,8 +659,7 @@ module axi_memory_island_tb #(
     .axi_narrow_rsp_o(dut_narrow_rsp),
     .axi_wide_req_i  (dut_wide_req),
     .axi_wide_rsp_o  (dut_wide_rsp),
-    .powergate_i (),
-    .deepsleep_i ()
+    .impl_i(impl_o)
   );
 
   // Golden model
