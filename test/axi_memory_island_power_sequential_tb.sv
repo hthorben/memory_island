@@ -37,7 +37,8 @@ module axi_memory_island_tb #(
 
   //localparam int unsigned TotalReq = NumNarrowReq + NumWideReq;
   localparam int unsigned TotalReq = NumNarrowReq;
-  localparam int unsigned TxInFlight = 16;  // pow2
+  //localparam int unsigned TxInFlight = 16;  // pow2
+  localparam int unsigned TxInFlight = 1;  // pow2
 
   `ASSERT_INIT(TestRegionFits, TestRegionEnd <= WordsPerBank * NumWideBanks * WideDataWidth / 8)
   `ASSERT_INIT(TestAfterAppl, ApplTime < TestTime)
@@ -55,17 +56,24 @@ module axi_memory_island_tb #(
   // The amount of physical memory banks inside each narrow bank
   localparam int unsigned NumPhysicalBanks = 16;
   // The amount of physical banks inside each narrow bank that are turned off
-  localparam int unsigned GatedBanks = 1;
+  localparam int unsigned GatedBanks = 11;
   // The granularity of the power gating, i.e. how many physical banks are controlled by a signal (has to be a power of 2)
   localparam int unsigned GatingGranularity = NWDivisor*NumWideBanks;
   // The amount of cables needed to achieve the desired gating granularity
   localparam int unsigned PWRSigWidth = (NWDivisor*NumPhysicalBanks*NumWideBanks) / GatingGranularity;
-  // simulate power gating
+  // Simulate power gating enabled
   localparam int unsigned Pwr_Sigs     = 1;
 
 
 
+  logic [TotalReq-1:0] end_of_full_pwr;
+  logic [TotalReq-1:0] end_of_pwr_gate;
 
+  logic pw_gate_ctrl;
+  logic deepsleep_ctrl;
+
+  int unsigned gated_accs = 0;
+  int unsigned gated;
 
 
 
@@ -223,41 +231,85 @@ module axi_memory_island_tb #(
 
 
 
-  for (genvar i = 0; i < NumNarrowReq; i++) begin : gen_narrow_stim
+  for (genvar i = 0; i < NumNarrowReq; i++) begin : gen_narrow_stim_axi_assignment
     `AXI_ASSIGN_TO_REQ(axi_narrow_req[i], axi_narrow_dv[i])
     `AXI_ASSIGN_FROM_RESP(axi_narrow_dv[i], axi_narrow_rsp[i])
+  end
 
     // Stimuli Generation
+  
+  for (genvar i = 0; i < NumNarrowReq; i++) begin : gen_narrow_stim 
     initial begin
+      pw_gate_ctrl         <= 1'b0;
+      deepsleep_ctrl       <= 1'b0;
+    //for (int i = 0; i < NumNarrowReq; i++) begin : gen_narrow_stim  
       narrow_rand_master[i] = new(axi_narrow_dv[i]);
       random_mem_filled[i] <= 1'b0;
       end_of_sim[i]        <= 1'b0;
-      // Make the port checking the powered region is not checking switched offf regions
+      end_of_full_pwr[i]   <= 1'b0;
+      end_of_pwr_gate[i]   <= 1'b0;
+
+
+      // Make sure in on state everything works as normal
+      narrow_rand_master[i].add_memory_region(TestRegionStart, TestRegionEnd,
+                                              axi_pkg::DEVICE_NONBUFFERABLE);
+      narrow_rand_master[i].reset();
+      @(posedge rst_n);
+      narrow_rand_master[i].run(0, 80);
+      random_mem_filled[i] <= 1'b1;
+      wait (&random_mem_filled);
+      narrow_rand_master[i].run(80, 80);
+      end_of_full_pwr[i] <= 1'b1;
+      wait (&end_of_full_pwr);
+      pw_gate_ctrl <= 1'b1;
+      narrow_rand_master[i] = new(axi_narrow_dv[i]);
+
+      // Make the port checking the powered region is not checking switched off regions
       if (i >= NumNarrowReq/2) begin
         narrow_rand_master[i].add_memory_region(TestRegionStart, ((NumPhysicalBanks - GatedBanks)*TestRegionEnd)/NumPhysicalBanks,
                                               axi_pkg::DEVICE_NONBUFFERABLE);
+        //narrow_rand_master[i].reset();
+        //@(posedge rst_n);
+        //narrow_rand_master[i].run(0, 0);
+        //random_mem_filled[i] <= 1'b1;
+        //wait (&random_mem_filled);
+        narrow_rand_master[i].run(50, 0);
+        end_of_pwr_gate[i] <= 1'b1;
       end else begin
         narrow_rand_master[i].add_memory_region(((NumPhysicalBanks - GatedBanks)*TestRegionEnd)/NumPhysicalBanks, TestRegionEnd,
                                               axi_pkg::DEVICE_NONBUFFERABLE);
+      //end
+        //narrow_rand_master[i].reset();
+        //@(posedge rst_n);
+        //narrow_rand_master[i].run(0, 0);
+        //random_mem_filled[i] <= 1'b1;
+        //wait (&random_mem_filled);
+        narrow_rand_master[i].run(50, 0);
+        end_of_pwr_gate[i] <= 1'b1;
       end
-      narrow_rand_master[i].reset();
-      @(posedge rst_n);
-      narrow_rand_master[i].run(0, TbNumWrites);
-      random_mem_filled[i] <= 1'b1;
-      wait (&random_mem_filled);
-      narrow_rand_master[i].run(TbNumReads, TbNumWrites);
+
+      wait (&end_of_pwr_gate);
+      gated_accs = gated;
+      pw_gate_ctrl <= 1'b0;
+      deepsleep_ctrl <= 1'b1;
+
+      narrow_rand_master[i].run(50, 0);
       end_of_sim[i] <= 1'b1;
+
     end
   end
 
-  for (genvar i = 0; i < NumNarrowReq/2; i++) begin : gen_narrow_limiting
+
+  for (genvar i = 0; i < NumNarrowReq; i++) begin : gen_narrow_limiting
     // Log address ranges of the requests
     assign write_range[i].start_addr = axi_narrow_req[i].aw.addr;
     assign write_range[i].end_addr = axi_narrow_req[i].aw.addr +
         ((2 ** axi_narrow_req[i].aw.size) * (axi_narrow_req[i].aw.len + 1));
+    //assign write_range[i].end_addr = axi_narrow_req[i].aw.addr + 4;
     assign read_range[i].start_addr = axi_narrow_req[i].ar.addr;
     assign read_range[i].end_addr = axi_narrow_req[i].ar.addr +
         ((2 ** axi_narrow_req[i].ar.size) * (axi_narrow_req[i].ar.len + 1));
+    //assign read_range[i].end_addr = axi_narrow_req[i].ar.addr + 4;
 
     assign aw_hs[i] = filtered_narrow_req[i].aw_valid && axi_narrow_rsp[i].aw_ready;
     assign ar_hs[i] = filtered_narrow_req[i].ar_valid && axi_narrow_rsp[i].ar_ready;
@@ -336,94 +388,6 @@ module axi_memory_island_tb #(
       end
     end
   end
-
-  for (genvar i = NumNarrowReq/2; i < NumNarrowReq; i++) begin : gen_narrow_limiting_gated
-    // Log address ranges of the requests
-    assign write_range[i].start_addr = axi_narrow_req[i].aw.addr;
-    assign write_range[i].end_addr = axi_narrow_req[i].aw.addr +
-        ((2 ** axi_narrow_req[i].aw.size) * (axi_narrow_req[i].aw.len + 1));
-    assign read_range[i].start_addr = axi_narrow_req[i].ar.addr;
-    assign read_range[i].end_addr = axi_narrow_req[i].ar.addr +
-        ((2 ** axi_narrow_req[i].ar.size) * (axi_narrow_req[i].ar.len + 1));
-
-    assign aw_hs[i] = filtered_narrow_req[i].aw_valid && axi_narrow_rsp[i].aw_ready;
-    assign ar_hs[i] = filtered_narrow_req[i].ar_valid && axi_narrow_rsp[i].ar_ready;
-
-    always_comb begin
-      for (int requestIdx = 0; requestIdx < TotalReq; requestIdx++) begin : gen_overlap_check_reqs
-        for (int axiIdx = 0; axiIdx < 2 ** AxiIdWidth; axiIdx++) begin : gen_overlap_check_ids
-          for (int txIdx = 0; txIdx < TxInFlight; txIdx++) begin : gen_overlap_check_txns
-
-            // Block write if overlapping region is already being written
-            write_overlapping_write[i][requestIdx][axiIdx][txIdx] =
-                txIdx < write_len[requestIdx][axiIdx] ? check_overlap(
-                write_range[i], regions_being_written[requestIdx][axiIdx][txIdx]) : '0;
-            // Block reads if overlapping region is already being written
-            read_overlapping_write[i][requestIdx][axiIdx][txIdx] =
-                txIdx < write_len[requestIdx][axiIdx] ?
-                check_overlap(read_range[i], regions_being_written[requestIdx][axiIdx][txIdx]) : '0;
-            // Block write if overlapping region is already being read
-            write_overlapping_read[i][requestIdx][axiIdx][txIdx] =
-                txIdx < read_len[requestIdx][axiIdx] ?
-                check_overlap(write_range[i], regions_being_read[requestIdx][axiIdx][txIdx]) : '0;
-          end
-        end
-        live_write_overlapping_write[i][requestIdx] =
-            check_overlap(write_range[i], write_range[requestIdx]);
-        live_write_overlapping_read[i][requestIdx] =
-            check_overlap(write_range[i], read_range[requestIdx]);
-        live_read_overlapping_write[i][requestIdx] =
-            check_overlap(read_range[i], write_range[requestIdx]);
-      end
-    end
-
-    always_comb begin : proc_filter_narrow
-      // By default connect all signals
-      `AXI_SET_REQ_STRUCT(filtered_narrow_req[i], axi_narrow_req[i])
-      `AXI_SET_RESP_STRUCT(axi_narrow_rsp[i], filtered_narrow_rsp[i])
-      blocking_write[i] = '0;
-      blocking_read[i]  = '0;
-
-      // Block writes if necessary
-      if (axi_narrow_req[i].aw_valid && filtered_narrow_rsp[i].aw_ready) begin
-        // check in-flight requests
-        if (|write_overlapping_write[i] || |write_overlapping_read[i]) begin
-          filtered_narrow_req[i].aw_valid = 1'b0;
-          axi_narrow_rsp[i].aw_ready      = 1'b0;
-          blocking_write[i]               = 1'b1;
-        end
-        // check other ports
-        for (int j = 0; j < i; j++) begin
-          // Block write if overlapping region is starting to be written/read by lower ID
-          if ((live_write_overlapping_write[i][j] && aw_hs[j]) ||
-              (live_write_overlapping_read[i][j] && ar_hs[j])) begin
-            filtered_narrow_req[i].aw_valid = 1'b0;
-            axi_narrow_rsp[i].aw_ready      = 1'b0;
-            blocking_write[i]               = 1'b1;
-          end
-        end
-      end
-      // Block reads if necessary
-      if (axi_narrow_req[i].ar_valid && filtered_narrow_rsp[i].ar_ready) begin
-        // check in-flight requests
-        if (|read_overlapping_write[i]) begin
-          filtered_narrow_req[i].ar_valid = 1'b0;
-          axi_narrow_rsp[i].ar_ready      = 1'b0;
-          blocking_read[i]                = 1'b1;
-        end
-        // check other ports
-        for (int j = 0; j <= i; j++) begin
-          // Block read if overlapping region is starting to be written by lower or same ID
-          if ((live_read_overlapping_write[i][j] && aw_hs[j])) begin
-            filtered_narrow_req[i].ar_valid = 1'b0;
-            axi_narrow_rsp[i].ar_ready      = 1'b0;
-            blocking_read[i]                = 1'b1;
-          end
-        end
-      end
-    end
-  end
-
 
 
 
@@ -496,8 +460,8 @@ module axi_memory_island_tb #(
 
   for (genvar i = 0; i < PWRSigWidth; i++) begin : gen_pwr_assignment
     if (i >= PWRSigWidth - GatedBanks) begin
-      assign impl_o[i].deepsleep = 0;
-      assign impl_o[i].powergate = 1;
+      assign impl_o[i].deepsleep = deepsleep_ctrl;
+      assign impl_o[i].powergate = pw_gate_ctrl;
     end else begin
       assign impl_o[i].deepsleep = 0;
       assign impl_o[i].powergate = 0;
@@ -592,12 +556,12 @@ module axi_memory_island_tb #(
       .mst_resp_i(golden_all_rsp[i])
     );
   end
-  for (genvar i = 0; i < NumWideReq; i++) begin : gen_golden_wide_assign
+  //for (genvar i = 0; i < NumWideReq; i++) begin : gen_golden_wide_assign
     //`AXI_ASSIGN_REQ_STRUCT(golden_all_req[NumNarrowReq+i], golden_wide_req[i])
     //`AXI_ASSIGN_RESP_STRUCT(golden_wide_rsp[i], golden_all_rsp[NumNarrowReq+i])
     //`AXI_ASSIGN_REQ_STRUCT(golden_all_req[NumNarrowReq+i], golden_wide_req[i])
     //`AXI_ASSIGN_RESP_STRUCT(golden_wide_rsp[i], golden_all_rsp[NumNarrowReq+i])
-  end
+  //end
 
   axi_sim_mem #(
     .AddrWidth        (AddrWidth),
@@ -635,11 +599,11 @@ module axi_memory_island_tb #(
 
   int unsigned errors;
   int unsigned errors_x;
-  int unsigned gated;
+  //int unsigned gated;
 
   always @(negedge clk) begin
-    if (mismatch[1] === 1'bx) gated += 1;
-    if (mismatch[0] === 1'bx) errors_x += 1;
+    if (mismatch[0] === 1'bx) gated += 1;
+    if (mismatch[1] === 1'bx) errors_x += 1;
   end
 
   // TB ctrl
@@ -647,10 +611,14 @@ module axi_memory_island_tb #(
     errors = 0;
     do begin
       #TestTime;
-      errors += $countones(mismatch[TotalReq - 1 : 0]);
+      errors += $countones(mismatch);
       if (end_of_sim == '1) begin
+        if (gated_accs == 0) errors += 1;
+        if (gated - gated_accs == 0) errors += 1;
         $display("Counted %d errors.", errors + errors_x);
-        $display("Power Gated accesses: %d ", gated);
+        $display("Power Gated accesses: %d ", gated_accs);
+        $display("Deepsleeped accesses: %d ", gated - gated_accs);
+        $display("Total Gated accesses: %d ", gated);
         $finish(errors);
       end
       @(posedge clk);
