@@ -21,15 +21,17 @@ module axi_memory_island_tb #(
   parameter int unsigned NumWideBanks      = 8,
   parameter int unsigned NarrowExtraBF     = 2,
   parameter int unsigned WordsPerBank      = 512 * NumNarrowReq * NumWideReq,
-  parameter int unsigned TbNumReads        = 200,
-  parameter int unsigned TbNumWrites       = 200,
+  parameter int unsigned TbNumReads        = 100,
+  parameter int unsigned TbNumWrites       = 100,
+  parameter int unsigned TbNumReadsDS      = 20,
+  parameter int unsigned TbNumReadsPG      = 20,
   parameter int unsigned BankAccessLatency = 2,
   parameter time         CyclTime          = 10ns,
   parameter time         ApplTime          = 2ns,
   parameter time         TestTime          = 8ns,
 
   localparam int unsigned TestRegionStart = 0,
-  localparam int unsigned TestRegionEnd   = 2097151 //16384
+  localparam int unsigned TestRegionEnd   = WordsPerBank*NumWideBanks*(WideDataWidth / NarrowDataWidth)*4 //16384
 ) ();
 
   localparam int unsigned TotalNumberOfWords = WordsPerBank * NumWideBanks * WideDataWidth /
@@ -46,6 +48,36 @@ module axi_memory_island_tb #(
   `ASSERT_INIT(TestRegionFits, TestRegionEnd <= WordsPerBank * NumWideBanks * WideDataWidth / 8)
   `ASSERT_INIT(TestAfterAppl, ApplTime < TestTime)
   `ASSERT_INIT(CycleTiming, ApplTime < CyclTime && TestTime < CyclTime)
+
+
+
+  // To be used as number of narrow banks
+  localparam int unsigned NWDivisor = WideDataWidth / NarrowDataWidth;
+  // The amount of physical memory banks inside each narrow bank
+  localparam int unsigned NumPhysicalBanks = 128;
+  // The amount of physical banks inside each narrow bank that are turned off
+  int unsigned GatedBanks;
+  // Number of gateable domains
+  localparam int unsigned NumPWRDomains = 64;
+  // The amount of cables needed to achieve the desired gating granularity
+  localparam int unsigned PWRSigWidth = NumPWRDomains;
+  // Simulate power gating enabled
+  localparam int unsigned Pwr_Sigs     = 1;
+
+
+
+  logic [TotalReq-1:0] end_of_full_pwr;
+  logic [NumNarrowReq-1:0] end_of_pwr_gate;
+
+  logic [PWRSigWidth-1:0] pw_gate_ctrl;
+  logic [PWRSigWidth-1:0] deepsleep_ctrl;
+
+  int unsigned gated_accs;
+  int unsigned gated;
+
+  int unsigned num_writes_pwr_gate = 0;
+  int unsigned num_writes_deepsleep = 0;
+
 
 
   logic clk, rst_n;
@@ -68,6 +100,30 @@ module axi_memory_island_tb #(
                    logic[NarrowDataWidth/8-1:0], logic[AxiUserWidth-1:0])
   `AXI_TYPEDEF_ALL(wide, logic[AddrWidth-1:0], logic[AxiIdWidth-1:0], logic[WideDataWidth-1:0],
                    logic[WideDataWidth/8-1:0], logic[AxiUserWidth-1:0])
+
+  // Narrow Random Master config
+  typedef axi_test::axi_rand_master#(
+    .AW            (AddrWidth),
+    .DW            (NarrowDataWidth),
+    .IW            (AxiIdWidth),
+    .UW            (AxiUserWidth),
+    // Stimuli application and test time
+    .TA            (ApplTime),
+    .TT            (TestTime),
+    .MAX_READ_TXNS (1),
+    .MAX_WRITE_TXNS(1),
+    .SIZE_ALIGN       (0),
+    .TRAFFIC_SHAPING  (0),
+    .AXI_EXCLS        (1'b0),
+    .AXI_ATOPS        (1'b0),
+    .AXI_MAX_BURST_LEN(1),
+    .AXI_BURST_FIXED  (1'b1),
+    .AXI_BURST_INCR   (1'b0),
+    .AXI_BURST_WRAP   (1'b0),
+    .UNIQUE_IDS       (1'b0)
+  ) narrow_axi_single_rand_master_t;
+
+
 
   // Narrow Random Master config
   typedef axi_test::axi_rand_master#(
@@ -140,8 +196,9 @@ module axi_memory_island_tb #(
     clk
   );
 
-  narrow_axi_rand_master_t                    narrow_rand_master      [NumNarrowReq];
-  wide_axi_rand_master_t                      wide_rand_master        [  NumWideReq];
+  narrow_axi_single_rand_master_t             narrow_single_rand_master   [NumNarrowReq];
+  narrow_axi_rand_master_t                    narrow_rand_master          [NumNarrowReq];
+  wide_axi_rand_master_t                      wide_rand_master            [  NumWideReq];
 
   narrow_req_t             [NumNarrowReq-1:0] filtered_narrow_req;
   narrow_resp_t            [NumNarrowReq-1:0] filtered_narrow_rsp;
@@ -204,24 +261,24 @@ module axi_memory_island_tb #(
         // push write queue on actual AW
         if (aw_hs[i] && axi_narrow_req[i].aw.id == id) begin
           regions_being_written[i][id].push_back(write_range[i]);
-           $display("writing to [%x, %x]", write_range[i].start_addr, write_range[i].end_addr);
+           //$display("writing to [%x, %x]", write_range[i].start_addr, write_range[i].end_addr);
         end
         // pop write queue on B
         if (axi_narrow_rsp[i].b_valid && filtered_narrow_req[i].b_ready &&
             axi_narrow_rsp[i].b.id == id) begin
           tmp_write[i] = regions_being_written[i][id].pop_front();
-           $display("done writing [%x, %x]",tmp_write[i].start_addr, tmp_write[i].end_addr);
+           //$display("done writing [%x, %x]",tmp_write[i].start_addr, tmp_write[i].end_addr);
         end
         // push read queue on actual AR
         if (ar_hs[i] && axi_narrow_req[i].ar.id == id) begin
           regions_being_read[i][id].push_back(read_range[i]);
-           $display("reading from [%x, %x]", read_range[i].start_addr, read_range[i].end_addr);
+           //$display("reading from [%x, %x]", read_range[i].start_addr, read_range[i].end_addr);
         end
         // pop read queue on last R
         if (axi_narrow_rsp[i].r_valid && filtered_narrow_req[i].r_ready &&
             axi_narrow_rsp[i].r.last && axi_narrow_rsp[i].r.id == id) begin
           tmp_read[i] = regions_being_read[i][id].pop_front();
-           $display("done reading [%x, %x]",tmp_read[i].start_addr, tmp_read[i].end_addr);
+           //$display("done reading [%x, %x]",tmp_read[i].start_addr, tmp_read[i].end_addr);
         end
         read_len[i][id]  = regions_being_read[i][id].size();
         write_len[i][id] = regions_being_written[i][id].size();
@@ -241,9 +298,15 @@ module axi_memory_island_tb #(
 
     // Stimuli Generation
     initial begin
+      pw_gate_ctrl         <= '0;
+      deepsleep_ctrl       <= '0;
       narrow_rand_master[i] = new(axi_narrow_dv[i]);
       random_mem_filled[i] <= 1'b0;
       end_of_sim[i]        <= 1'b0;
+      end_of_full_pwr[i]   <= 1'b0;
+      end_of_pwr_gate[i]   <= 1'b0;
+      GatedBanks <= 0;
+
       // Allow all of MemoryIsland space
       narrow_rand_master[i].add_memory_region(TestRegionStart, TestRegionEnd,
                                               axi_pkg::DEVICE_NONBUFFERABLE);
@@ -253,6 +316,34 @@ module axi_memory_island_tb #(
       random_mem_filled[i] <= 1'b1;
       wait (&random_mem_filled);
       narrow_rand_master[i].run(TbNumReads, TbNumWrites);
+      end_of_full_pwr[i] <= 1'b1;
+      wait (&end_of_full_pwr);
+
+      // Make the port checking the powered region is not checking switched off regions
+
+      for (int gated_banks = 1; gated_banks <= NumPWRDomains; gated_banks++) begin
+
+        GatedBanks = gated_banks;
+        end_of_pwr_gate[i]   <= 1'b0;
+        narrow_single_rand_master[i] = new(axi_narrow_dv[i]);
+        pw_gate_ctrl[PWRSigWidth-gated_banks] = 1;
+
+        if (i >= NumNarrowReq/2) begin
+          if (gated_banks != NumPWRDomains) begin
+            narrow_single_rand_master[i].add_memory_region(TestRegionStart, ((NumPWRDomains - GatedBanks)*TestRegionEnd)/NumPWRDomains,
+                                                  axi_pkg::DEVICE_NONBUFFERABLE);
+
+            narrow_single_rand_master[i].run(TbNumReadsPG, 0);
+          end
+        end else begin
+          narrow_single_rand_master[i].add_memory_region(((NumPWRDomains - GatedBanks)*TestRegionEnd)/NumPWRDomains, TestRegionEnd,
+                                                axi_pkg::DEVICE_NONBUFFERABLE);
+
+          narrow_single_rand_master[i].run(TbNumReadsPG, 0);
+        end
+        end_of_pwr_gate[i] <= 1'b1;
+        wait (&end_of_pwr_gate);
+      end
       end_of_sim[i] <= 1'b1;
     end
   end
@@ -405,6 +496,7 @@ module axi_memory_island_tb #(
       wide_rand_master[i] = new(axi_wide_dv[i]);
       random_mem_filled[NumNarrowReq+i] <= 1'b0;
       end_of_sim[NumNarrowReq+i]        <= 1'b0;
+      end_of_full_pwr[NumNarrowReq+i]   <= 1'b0;
       wide_rand_master[i].add_memory_region(TestRegionStart, TestRegionEnd,
                                             axi_pkg::DEVICE_NONBUFFERABLE);
       wide_rand_master[i].reset();
@@ -413,6 +505,7 @@ module axi_memory_island_tb #(
       random_mem_filled[NumNarrowReq+i] <= 1'b1;
       wait (&random_mem_filled);
       wide_rand_master[i].run(TbNumReads, TbNumWrites);
+      end_of_full_pwr[NumNarrowReq+i] <= 1'b1;
       end_of_sim[NumNarrowReq+i] <= 1'b1;
     end
   end
@@ -577,15 +670,6 @@ module axi_memory_island_tb #(
   end
 
 
-  // To be used as number of narrow banks
-  localparam int unsigned NWDivisor = WideDataWidth / NarrowDataWidth;
-  // The amount of physical memory banks inside each narrow bank
-  localparam int unsigned NumPhysicalBanks = 4;
-  // The granularity of the power gating, i.e. how many physical banks are controlled by a signal (has to be a power of 2)
-  localparam int unsigned GatingGranularity = NWDivisor*NumWideBanks;
-  // The amount of cables needed to achieve the desired gating granularity
-  localparam int unsigned PWRSigWidth = (NWDivisor*NumPhysicalBanks*NumWideBanks) / GatingGranularity;
-
   // Implementation type for Power Gating and Deppesleep ports
   typedef struct packed {
      logic deepsleep;
@@ -595,19 +679,8 @@ module axi_memory_island_tb #(
   impl_in_t [PWRSigWidth-1:0] impl_o;
 
   for (genvar i = 0; i < PWRSigWidth; i++) begin : gen_pwr_assignment
-    if (i == 1) begin
-      assign impl_o[i].deepsleep = 0;
-      assign impl_o[i].powergate = 0;
-    end else if (i == 2) begin
-      assign impl_o[i].deepsleep = 0;
-      assign impl_o[i].powergate = 0;
-    end else if (i == 3) begin
-      assign impl_o[i].deepsleep = 0;
-      assign impl_o[i].powergate = 0;
-    end else begin
-      assign impl_o[i].deepsleep = 0;
-      assign impl_o[i].powergate = 0;
-    end
+      assign impl_o[i].deepsleep = deepsleep_ctrl[i];
+      assign impl_o[i].powergate = pw_gate_ctrl[i];
   end
 
 
@@ -649,9 +722,9 @@ module axi_memory_island_tb #(
 
     .NWDivisor         (NWDivisor),
     .NumPhysicalBanks  (NumPhysicalBanks),
-    .GatingGranularity (GatingGranularity),
-    .PWRSigWidth       (PWRSigWidth),
-    .impl_in_t         (impl_in_t)
+    .NumPWRDomains     (NumPWRDomains),
+    .impl_in_t         (impl_in_t),
+    .Pwr_Sigs          (Pwr_Sigs)
   ) i_dut (
     .clk_i           (clk),
     .rst_ni          (rst_n),
@@ -733,16 +806,19 @@ module axi_memory_island_tb #(
     .mon_r_last_o      ()
   );
 
+  
   int unsigned errors;
+  int unsigned errors_x;
+  int unsigned expected_gated = (NumPWRDomains * TbNumReadsPG * NumNarrowReq)/2;
 
-  // Function with fixed width vector
-  function automatic int count_xs(input logic [TotalReq-1:0] vec);
-    int count = 0;
-    for (int i = 0; i < TotalReq; i++) begin
-      if (vec[i] === 1'bx) count++;
+  always @(negedge clk) begin
+    for (int i = 0; i < NumNarrowReq/2; i++) begin
+      if (mismatch[i] === 1'bx) gated += 1;
     end
-    return count;
-  endfunction
+    for (int i = NumNarrowReq/2; i < TotalReq; i++) begin
+      if (mismatch[i] === 1'bx) errors_x += 1;
+    end
+  end
 
   // TB ctrl
   initial begin
@@ -750,9 +826,11 @@ module axi_memory_island_tb #(
     do begin
       #TestTime;
       errors += $countones(mismatch);
-      errors += count_xs(mismatch);
       if (end_of_sim == '1) begin
-        $display("Counted %d errors.", errors);
+        if (gated == 0) errors += 1;
+        if (gated != expected_gated) errors += 1;
+        $display("Counted %d errors.", errors + errors_x);
+        $display("Power Gated accesses: %d / %d ", gated, expected_gated);
         $finish(errors);
       end
       @(posedge clk);

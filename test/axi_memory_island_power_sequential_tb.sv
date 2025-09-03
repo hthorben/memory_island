@@ -268,22 +268,12 @@ module axi_memory_island_tb #(
       if (i >= NumNarrowReq/2) begin
         narrow_rand_master[i].add_memory_region(TestRegionStart, ((NumPhysicalBanks - GatedBanks)*TestRegionEnd)/NumPhysicalBanks,
                                               axi_pkg::DEVICE_NONBUFFERABLE);
-        //narrow_rand_master[i].reset();
-        //@(posedge rst_n);
-        //narrow_rand_master[i].run(0, 0);
-        //random_mem_filled[i] <= 1'b1;
-        //wait (&random_mem_filled);
         narrow_rand_master[i].run(50, 0);
         end_of_pwr_gate[i] <= 1'b1;
       end else begin
         narrow_rand_master[i].add_memory_region(((NumPhysicalBanks - GatedBanks)*TestRegionEnd)/NumPhysicalBanks, TestRegionEnd,
                                               axi_pkg::DEVICE_NONBUFFERABLE);
-      //end
-        //narrow_rand_master[i].reset();
-        //@(posedge rst_n);
-        //narrow_rand_master[i].run(0, 0);
-        //random_mem_filled[i] <= 1'b1;
-        //wait (&random_mem_filled);
+
         narrow_rand_master[i].run(50, 0);
         end_of_pwr_gate[i] <= 1'b1;
       end

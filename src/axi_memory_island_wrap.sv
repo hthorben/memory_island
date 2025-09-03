@@ -64,12 +64,12 @@ module axi_memory_island_wrap #(
 
   // To be used as number of narrow banks
   parameter int unsigned NWDivisor = WideDataWidth / NarrowDataWidth,
-  // The granularity of the power gating, i.e. how many physical banks are controlled by a signal (has to be a power of 2)
-  parameter int unsigned GatingGranularity = NWDivisor*NumWideBanks,
   // The amount of physical memory banks inside each narrow bank
   parameter int unsigned NumPhysicalBanks = 1,
+  // The amount of power domains controlled that can be gated
+  parameter int unsigned NumPWRDomains = 1,
   // The amount of cables needed to achieve the desired gating granularity
-  parameter int unsigned PWRSigWidth = (NWDivisor*NumPhysicalBanks*NumWideBanks) / GatingGranularity,
+  //parameter int unsigned PWRSigWidth = (NWDivisor*NumPhysicalBanks*NumWideBanks) / GatingGranularity,
   parameter type         impl_in_t    = logic,
   parameter int unsigned Pwr_Sigs     = 0
 ) (
@@ -82,8 +82,14 @@ module axi_memory_island_wrap #(
   input  axi_wide_req_t [NumWideReq-1:0] axi_wide_req_i,
   output axi_wide_rsp_t [NumWideReq-1:0] axi_wide_rsp_o,
 
-  input  impl_in_t [PWRSigWidth-1:0]     impl_i
+  input  impl_in_t [NumPWRDomains-1:0]     impl_i
 );
+
+  // The granularity of the power gating, i.e. how many physical banks are controlled by a signal (has to be a power of 2)
+  localparam int unsigned GatingGranularity = NWDivisor*NumWideBanks*NumPhysicalBanks/NumPWRDomains;
+  // The amount of cables needed to achieve the desired gating granularity
+  localparam int unsigned PWRSigWidth = NumPWRDomains;
+
   //localparam int unsigned NWDivisor = WideDataWidth / NarrowDataWidth;
   localparam int unsigned BankAddrMemWidth = $clog2(WordsPerBank);
   localparam int unsigned NarrowStrbWidth = NarrowDataWidth / 8;

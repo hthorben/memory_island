@@ -16,14 +16,6 @@ packages:
     dependencies:
     - common_cells
   common_cells:
-    revision: 9afda9abb565971649c2aa0985639c096f351171
-    version: 1.38.0
-    source:
-      Git: https://github.com/pulp-platform/common_cells.git
-    dependencies:
-    - common_verification
-    - tech_cells_generic
-  common_cells_pw:
     revision: ca81796336924d777a992d9bd044c604568a822a
     version: null
     source:
@@ -38,13 +30,6 @@ packages:
       Git: https://github.com/pulp-platform/common_verification.git
     dependencies: []
   tech_cells_generic:
-    revision: 7968dd6e6180df2c644636bc6d2908a49f2190cf
-    version: 0.2.13
-    source:
-      Git: https://github.com/pulp-platform/tech_cells_generic.git
-    dependencies:
-    - common_verification
-  tech_cells_generic_pw:
     revision: b4928f09a7a3355cc4f455e673e0aac088bfad38
     version: null
     source:
