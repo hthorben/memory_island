@@ -1,0 +1,16 @@
+################
+## LOGIC NETS ##
+################
+for {set wb 0} {$wb < $WIDE_BANKS} {incr wb} {
+    for {set nb 0} {$nb < $NAR_BANKS} {incr nb} {
+        for {set pb 0} {$pb < $PHYS_BANKS} {incr pb} {
+            
+            create_logic_net tc_sram_${wb}_${nb}_${pb}_powergate
+
+            connect_logic_net tc_sram_${wb}_${nb}_${pb}_powergate -reconnect \
+            -ports "impl_i[$pb].powergate i_memory_island/gen_wide_banks[$wb]/gen_narrow_banks[$nb]/i_bank/gen_logic_bank/gen_logic_bank[$pb]/i_tc_sram_impl/powergate"
+
+
+        }
+    }  
+}

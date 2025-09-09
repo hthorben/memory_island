@@ -1,0 +1,14 @@
+##################
+## Power Domain ##
+##################
+create_power_domain PD_TC_SRAM \
+  -elements {.} \
+  -supply {primary}
+
+#################
+## Power State ##
+#################
+
+add_power_state -domain PD_TC_SRAM \
+  -state {ON    -logic_expr {PD_TC_SRAM.primary==ON }} \
+  -state {OFF   -logic_expr {PD_TC_SRAM.primary==OFF}}

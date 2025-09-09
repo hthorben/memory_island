@@ -1,0 +1,7 @@
+upf_version 3.0
+
+set_design_top axi_memory_island_tb/i_dut
+
+source $UPF_PATH/memory_island_constraints.upf
+source $UPF_PATH/memory_island_configuration.upf
+source $UPF_PATH/memory_island_implementation.upf

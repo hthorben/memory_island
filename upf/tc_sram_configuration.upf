@@ -1,0 +1,15 @@
+###########
+## Logic ##
+###########
+create_logic_port powergate -direction in
+
+#connect_logic_net powergate \
+#  -ports "./impl_o.powergate"
+
+
+#################
+## Power State ##
+#################
+add_power_state -domain PD_TC_SRAM -update \
+  -state {ON    -logic_expr {  !powergate }} \
+  -state {OFF   -logic_expr {   powergate }} 

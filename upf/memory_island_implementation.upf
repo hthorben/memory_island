@@ -1,0 +1,82 @@
+############
+## Supply ##
+############
+create_supply_port VDD -direction in
+create_supply_port VSS -direction in
+
+create_supply_net VDD
+create_supply_net VSS
+
+connect_supply_net VDD -ports {VDD}
+connect_supply_net VSS -ports {VSS}
+
+for {set nd 0} {$nd < $PWR_DOMAINS} {incr nd} {
+    create_supply_net "VBANK_sw_${nd}"
+}
+
+###################
+## Power Domains ##
+###################
+
+for {set nd 0} {$nd < $PWR_DOMAINS} {incr nd} {
+
+    create_power_domain PD_TC_SRAM_${nd} -update \
+    -supply {aon}
+
+}
+
+#################
+## Supply Sets ##
+#################
+
+create_supply_set PD_MEMORY_ISLAND.primary -update \
+  -function {power VDD} \
+  -function {ground VSS}
+
+for {set nd 0} {$nd < $PWR_DOMAINS} {incr nd} {
+
+    create_supply_set PD_TC_SRAM_${nd}.aon -update \
+    -function {power VDD} \
+    -function {ground VSS}
+
+    create_supply_set PD_TC_SRAM_${nd}.primary -update \
+    -function "power VBANK_sw_${nd}" \
+    -function {ground VSS}
+
+}
+
+##################
+## Power States ##
+##################
+
+add_power_state -supply PD_MEMORY_ISLAND.primary -update \
+  -state {ON -supply_expr {power == {FULL_ON} && ground == {FULL_ON}}}
+
+for {set nd 0} {$nd < $PWR_DOMAINS} {incr nd} {
+
+    add_power_state -supply PD_TC_SRAM_${nd}.primary -update \
+    -state {ON    -supply_expr {power == {FULL_ON} && ground == {FULL_ON}}} \
+    -state {OFF   -supply_expr {power == {OFF} && ground == {FULL_ON}} -simstate CORRUPT}
+
+
+    add_power_state -supply PD_TC_SRAM_${nd}.aon -update \
+    -state {ON    -supply_expr {power == {FULL_ON} && ground == {FULL_ON}}}
+
+}
+
+####################
+## Power Switches ##
+####################
+
+for {set nd 0} {$nd < $PWR_DOMAINS} {incr nd} {
+
+    create_power_switch sw_DOMAIN_${nd} \
+        -input_supply_port  "sw_in PD_TC_SRAM_${nd}.aon.power" \
+        -output_supply_port "sw_out PD_TC_SRAM_${nd}.primary.power" \
+        -control_port       "sw domain_${nd}_powergate" \
+        -on_state           {on_state sw_in !sw} \
+        -off_state          {off_state sw} \
+        -supply_set         "PD_TC_SRAM_${nd}.aon" \
+        -domain             "PD_TC_SRAM_${nd}"
+
+}

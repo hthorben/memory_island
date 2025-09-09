@@ -66,11 +66,11 @@ module axi_memory_island_wrap #(
   parameter int unsigned NWDivisor = WideDataWidth / NarrowDataWidth,
   // The amount of physical memory banks inside each narrow bank
   parameter int unsigned NumPhysicalBanks = 1,
-  // The amount of power domains controlled that can be gated
+  // The amount of controllable power domains that can be gated
   parameter int unsigned NumPWRDomains = 1,
-  // The amount of cables needed to achieve the desired gating granularity
-  //parameter int unsigned PWRSigWidth = (NWDivisor*NumPhysicalBanks*NumWideBanks) / GatingGranularity,
+  // Struct for the power control signlas 
   parameter type         impl_in_t    = logic,
+  // Parameter to control of the tc_sra banks should simulate power gating
   parameter int unsigned Pwr_Sigs     = 0
 ) (
   input logic clk_i,

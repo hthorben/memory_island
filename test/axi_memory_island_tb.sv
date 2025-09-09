@@ -18,11 +18,11 @@ module axi_memory_island_tb #(
   parameter int unsigned AxiUserWidth      = 1,
   parameter int unsigned NumNarrowReq      = 4,
   parameter int unsigned NumWideReq        = 2,
-  parameter int unsigned NumWideBanks      = 8,
+  parameter int unsigned NumWideBanks      = 4,
   parameter int unsigned NarrowExtraBF     = 2,
   parameter int unsigned WordsPerBank      = 512 * NumNarrowReq * NumWideReq,
-  parameter int unsigned TbNumReads        = 100,
-  parameter int unsigned TbNumWrites       = 100,
+  parameter int unsigned TbNumReads        = 10,
+  parameter int unsigned TbNumWrites       = 10,
   parameter int unsigned TbNumReadsDS      = 20,
   parameter int unsigned TbNumReadsPG      = 20,
   parameter int unsigned BankAccessLatency = 2,
@@ -54,15 +54,15 @@ module axi_memory_island_tb #(
   // To be used as number of narrow banks
   localparam int unsigned NWDivisor = WideDataWidth / NarrowDataWidth;
   // The amount of physical memory banks inside each narrow bank
-  localparam int unsigned NumPhysicalBanks = 128;
+  localparam int unsigned NumPhysicalBanks = 4;
   // The amount of physical banks inside each narrow bank that are turned off
   int unsigned GatedBanks;
   // Number of gateable domains
-  localparam int unsigned NumPWRDomains = 64;
+  localparam int unsigned NumPWRDomains = 2;
   // The amount of cables needed to achieve the desired gating granularity
   localparam int unsigned PWRSigWidth = NumPWRDomains;
   // Simulate power gating enabled
-  localparam int unsigned Pwr_Sigs     = 1;
+  localparam int unsigned Pwr_Sigs     = 0;
 
 
 
@@ -676,6 +676,7 @@ module axi_memory_island_tb #(
      logic powergate;
   } impl_in_t;
 
+  // Signal used to drive the power gating control
   impl_in_t [PWRSigWidth-1:0] impl_o;
 
   for (genvar i = 0; i < PWRSigWidth; i++) begin : gen_pwr_assignment

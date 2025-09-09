@@ -4,6 +4,8 @@
 
 # Michael Rogenmoser <michaero@iis.ee.ethz.ch>
 
+#	vopt $(PA_FLAGS) +acc -o vopt_tb axi_memory_island_tb -work work
+
 MEMORY_ISLAND_ROOT := $(CURDIR)
 
 BENDER ?= bender -d $(MEMORY_ISLAND_ROOT)
@@ -11,6 +13,8 @@ BENDER ?= bender -d $(MEMORY_ISLAND_ROOT)
 VSIM ?= vsim
 VCS ?= vcs
 VLOGAN ?= vlogan
+
+PA_FLAGS = -pa_top axi_memory_island_tb/i_dut -pa_upf $(MEMORY_ISLAND_ROOT)/upf/memis_tb.upf -pa_enable=highlight -pa_coverage=powerstate -pa_enable=highlight+debug -L mtiPA -pa_genrpt=pa+de+cell+srcsink -pa_checks=s+i+r -pa_disable=defaultoff
 
 scripts/compile.tcl: Bender.yml Bender.lock
 	$(BENDER) script vsim -t test --vlog-arg="-svinputport=compat" > $@
@@ -24,6 +28,10 @@ test-vsim: scripts/compile.tcl
 test-vsim-bare: scripts/compile.tcl
 	$(VSIM) -64 -c -do "quit -code [source scripts/compile.tcl]"
 	$(VSIM) -64 -c -do "vsim axi_memory_island_tb; run -all"
+
+test-vsim-pw:scripts/compile.tcl
+	$(VSIM) -64 -c -do "quit -code [source scripts/compile.tcl]"
+	$(VSIM) -64 -do "vsim -c axi_memory_island_tb -pa -pa_highlight -t 1ps -vopt -voptargs=\"+acc ${PA_FLAGS}\";"
 
 ## Internal CI
 NONFREE_REMOTE ?= git@iis-git.ee.ethz.ch:pulp-restricted/memory_island_nonfree.git

@@ -1,0 +1,55 @@
+############
+## Supply ##
+############
+
+create_supply_port VBANK
+create_supply_port VSS
+
+create_supply_net VBANK
+create_supply_net VSS
+
+create_supply_net VBANK_sw
+
+connect_supply_net VBANK -ports VBANK
+connect_supply_net VSS   -ports VSS
+
+################################
+##  Power Supply Set Handles  ##
+################################
+
+create_power_domain PD_TC_SRAM -update \
+  -supply {aon}
+
+create_supply_set PD_TC_SRAM.aon -update \
+  -function {power VBANK} \
+  -function {ground VSS}
+
+create_supply_set PD_TC_SRAM.primary -update \
+  -function {power VBANK_sw} \
+  -function {ground VSS}
+
+
+####################
+## Power Switches ##
+####################
+
+create_power_switch sw_BANK \
+  -input_supply_port  {sw_in PD_TC_SRAM.aon.power} \
+  -output_supply_port {sw_out PD_TC_SRAM.primary.power} \
+  -control_port       {sw powergate} \
+  -on_state           {on_state sw_in !sw} \
+  -off_state          {off_state sw} \
+  -supply_set         {PD_TC_SRAM.aon} \
+  -domain             PD_TC_SRAM
+
+##################
+## Power States ##
+##################
+
+add_power_state -supply PD_TC_SRAM.primary -update \
+  -state {ON    -supply_expr {power == {FULL_ON} && ground == {FULL_ON}}} \
+  -state {OFF   -supply_expr {power == {OFF} && ground == {FULL_ON}} -simstate CORRUPT}
+
+
+add_power_state -supply PD_TC_SRAM.aon -update \
+  -state {ON    -supply_expr {power == {FULL_ON} && ground == {FULL_ON}}}

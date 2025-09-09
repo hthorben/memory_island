@@ -1,0 +1,16 @@
+upf_version 3.0
+
+
+################
+## Parameters ##
+################
+set WIDE_BANKS 4
+set NAR_BANKS 16
+set PHYS_BANKS 4
+set PWR_DOMAINS 2
+
+set design_top axi_memory_island_tb/i_dut
+
+source upf/memory_island_constraints.upf
+source upf/memory_island_configuration.upf
+source upf/memory_island_implementation.upf

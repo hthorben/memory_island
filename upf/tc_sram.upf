@@ -1,0 +1,3 @@
+source upf/tc_sram_constraints.upf
+source upf/tc_sram_configuration.upf
+source upf/tc_sram_implementation.upf

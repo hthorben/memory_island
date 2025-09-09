@@ -90,6 +90,11 @@ module memory_island_core #(
   initial begin
     // WidePriorityWait requires no narrow request spill after interco for fixed latency!
     assert (WidePriorityWait == 0 || SpillNarrowReqRouted == 0);
+
+    assert ((NumPhysicalBanks != 0) && (NumPhysicalBanks & (NumPhysicalBanks - 1)) == 0)
+      else $error("Parameter %m: %0d is not a power of 2", NumPhysicalBanks);
+    assert ((NumPhysicalBanks >= PWRSigWidth))
+      else $error("There are more controlable domains than banks");
   end
 
   localparam int unsigned WidePseudoBanks = NWDivisor * NarrowExtraBF;
