@@ -10,9 +10,13 @@ MEMORY_ISLAND_ROOT := $(CURDIR)
 
 BENDER ?= bender -d $(MEMORY_ISLAND_ROOT)
 
-VSIM ?= vsim
-VCS ?= vcs
-VLOGAN ?= vlogan
+#QUESTA ?= questa-2019.3
+QUESTA ?= questa-2021.3
+
+
+VSIM ?= $(QUESTA) vsim
+VCS ?= $(QUESTA) vcs
+VLOGAN ?= $(QUESTA) vlogan
 
 PA_FLAGS = -pa_top axi_memory_island_tb/i_dut -pa_upf $(MEMORY_ISLAND_ROOT)/upf/memis_tb.upf -pa_enable=highlight -pa_coverage=powerstate -pa_enable=highlight+debug -L mtiPA -pa_genrpt=pa+de+cell+srcsink -pa_checks=s+i+r -pa_disable=defaultoff
 

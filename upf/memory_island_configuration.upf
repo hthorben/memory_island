@@ -4,12 +4,15 @@
 
 for {set nd 0} {$nd < $PWR_DOMAINS} {incr nd} {
             
-    create_logic_port domain_${nd}_powergate
+    #create_logic_port domain_${nd}_powergate
 
     create_logic_net domain_${nd}_powergate
 
-    connect_logic_net domain_${nd}_powergate -reconnect \
-    -ports "impl_i[$nd].powergate domain_${nd}_powergate"
+    connect_logic_net "domain_${nd}_powergate" \
+    -ports "impl_i[$nd].powergate"
+
+    #connect_logic_net domain_${nd}_powergate -reconnect \
+    #-ports "impl_i[$nd].powergate domain_${nd}_powergate"
 
 
 }
@@ -20,9 +23,10 @@ for {set nd 0} {$nd < $PWR_DOMAINS} {incr nd} {
 #################
 
 for {set nd 0} {$nd < $PWR_DOMAINS} {incr nd} {
+    set on_expr  "!domain_${nd}_powergate"
+    set off_expr "domain_${nd}_powergate"
 
     add_power_state -domain PD_TC_SRAM_${nd} -update \
-    -state {ON    -logic_expr {  !"domain_${nd}_powergate" }} \
-    -state {OFF   -logic_expr {   "domain_${nd}_powergate" }} 
-
+        -state "ON    -logic_expr {$on_expr}" \
+        -state "OFF   -logic_expr {$off_expr}"
 }

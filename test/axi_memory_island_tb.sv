@@ -54,11 +54,11 @@ module axi_memory_island_tb #(
   // To be used as number of narrow banks
   localparam int unsigned NWDivisor = WideDataWidth / NarrowDataWidth;
   // The amount of physical memory banks inside each narrow bank
-  localparam int unsigned NumPhysicalBanks = 4;
+  localparam int unsigned NumPhysicalBanks = 8;
   // The amount of physical banks inside each narrow bank that are turned off
   int unsigned GatedBanks;
   // Number of gateable domains
-  localparam int unsigned NumPWRDomains = 2;
+  localparam int unsigned NumPWRDomains = 4;
   // The amount of cables needed to achieve the desired gating granularity
   localparam int unsigned PWRSigWidth = NumPWRDomains;
   // Simulate power gating enabled
