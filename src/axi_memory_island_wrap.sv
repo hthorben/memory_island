@@ -71,7 +71,9 @@ module axi_memory_island_wrap #(
   // Struct for the power control signlas 
   parameter type         impl_in_t    = logic,
   // Parameter to control of the tc_sra banks should simulate power gating
-  parameter int unsigned Pwr_Sigs     = 0
+  parameter int unsigned Pwr_Sigs     = 0,
+
+  parameter int unsigned NumUPFSignals = 0
 ) (
   input logic clk_i,
   input logic rst_ni,
@@ -82,7 +84,8 @@ module axi_memory_island_wrap #(
   input  axi_wide_req_t [NumWideReq-1:0] axi_wide_req_i,
   output axi_wide_rsp_t [NumWideReq-1:0] axi_wide_rsp_o,
 
-  input  impl_in_t [NumPWRDomains-1:0]     impl_i
+  input  impl_in_t [NumPWRDomains-1:0]     impl_i,
+  input  logic     [NumUPFSignals-1:0] [NumPWRDomains-1:0]  upf_signals
 );
 
   // The granularity of the power gating, i.e. how many physical banks are controlled by a signal (has to be a power of 2)

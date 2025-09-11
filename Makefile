@@ -11,14 +11,17 @@ MEMORY_ISLAND_ROOT := $(CURDIR)
 BENDER ?= bender -d $(MEMORY_ISLAND_ROOT)
 
 #QUESTA ?= questa-2019.3
-QUESTA ?= questa-2021.3
+#QUESTA ?= questa-2021.3
+#QUESTA ?= questa-2022.3
+QUESTA ?= questa-2025.1
 
 
 VSIM ?= $(QUESTA) vsim
 VCS ?= $(QUESTA) vcs
 VLOGAN ?= $(QUESTA) vlogan
 
-PA_FLAGS = -pa_top axi_memory_island_tb/i_dut -pa_upf $(MEMORY_ISLAND_ROOT)/upf/memis_tb.upf -pa_enable=highlight -pa_coverage=powerstate -pa_enable=highlight+debug -L mtiPA -pa_genrpt=pa+de+cell+srcsink -pa_checks=s+i+r -pa_disable=defaultoff
+#PA_FLAGS = -pa_top axi_memory_island_tb/i_dut -pa_upf $(MEMORY_ISLAND_ROOT)/upf/memis_tb.upf -pa_enable=highlight -pa_coverage=powerstate -pa_enable=highlight+debug -L mtiPA -pa_genrpt=pa+de+cell+srcsink -pa_checks=s+i+r -pa_disable=defaultoff
+PA_FLAGS = -pa_top axi_memory_island_tb/i_dut -pa_upf $(MEMORY_ISLAND_ROOT)/upf/memis_tb.upf -pa_enable=highlight -pa_coverage=powerstate -pa_enable=highlight+debug -L mtiPA -pa_genrpt=pa+de+cell+srcsink -pa_checks=s+i+r -pa_disable=defaultoff -pa_upfversion=3.0
 
 scripts/compile.tcl: Bender.yml Bender.lock
 	$(BENDER) script vsim -t test --vlog-arg="-svinputport=compat" > $@

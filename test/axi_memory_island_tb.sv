@@ -21,10 +21,10 @@ module axi_memory_island_tb #(
   parameter int unsigned NumWideBanks      = 4,
   parameter int unsigned NarrowExtraBF     = 2,
   parameter int unsigned WordsPerBank      = 512 * NumNarrowReq * NumWideReq,
-  parameter int unsigned TbNumReads        = 10,
-  parameter int unsigned TbNumWrites       = 10,
-  parameter int unsigned TbNumReadsDS      = 20,
-  parameter int unsigned TbNumReadsPG      = 20,
+  parameter int unsigned TbNumReads        = 100,
+  parameter int unsigned TbNumWrites       = 100,
+  parameter int unsigned TbNumReadsDS      = 50,
+  parameter int unsigned TbNumReadsPG      = 50,
   parameter int unsigned BankAccessLatency = 2,
   parameter time         CyclTime          = 10ns,
   parameter time         ApplTime          = 2ns,
@@ -54,11 +54,11 @@ module axi_memory_island_tb #(
   // To be used as number of narrow banks
   localparam int unsigned NWDivisor = WideDataWidth / NarrowDataWidth;
   // The amount of physical memory banks inside each narrow bank
-  localparam int unsigned NumPhysicalBanks = 8;
+  localparam int unsigned NumPhysicalBanks = 64;
   // The amount of physical banks inside each narrow bank that are turned off
   int unsigned GatedBanks;
   // Number of gateable domains
-  localparam int unsigned NumPWRDomains = 4;
+  localparam int unsigned NumPWRDomains = 8;
   // The amount of cables needed to achieve the desired gating granularity
   localparam int unsigned PWRSigWidth = NumPWRDomains;
   // Simulate power gating enabled
@@ -679,6 +679,11 @@ module axi_memory_island_tb #(
   // Signal used to drive the power gating control
   impl_in_t [PWRSigWidth-1:0] impl_o;
 
+  localparam NumUPFSignals = 2;
+  logic [NumUPFSignals-1:0][PWRSigWidth-1:0] upf_signals;
+  assign upf_signals[0] = pw_gate_ctrl;
+  assign upf_signals[1] = deepsleep_ctrl;
+
   for (genvar i = 0; i < PWRSigWidth; i++) begin : gen_pwr_assignment
       assign impl_o[i].deepsleep = deepsleep_ctrl[i];
       assign impl_o[i].powergate = pw_gate_ctrl[i];
@@ -725,7 +730,8 @@ module axi_memory_island_tb #(
     .NumPhysicalBanks  (NumPhysicalBanks),
     .NumPWRDomains     (NumPWRDomains),
     .impl_in_t         (impl_in_t),
-    .Pwr_Sigs          (Pwr_Sigs)
+    .Pwr_Sigs          (Pwr_Sigs),
+    .NumUPFSignals        (NumUPFSignals)
   ) i_dut (
     .clk_i           (clk),
     .rst_ni          (rst_n),
@@ -733,7 +739,8 @@ module axi_memory_island_tb #(
     .axi_narrow_rsp_o(dut_narrow_rsp),
     .axi_wide_req_i  (dut_wide_req),
     .axi_wide_rsp_o  (dut_wide_rsp),
-    .impl_i(impl_o)
+    .impl_i(impl_o),
+    .upf_signals(upf_signals)
   );
 
   // Golden model

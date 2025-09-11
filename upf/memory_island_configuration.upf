@@ -3,17 +3,18 @@
 ################
 
 for {set nd 0} {$nd < $PWR_DOMAINS} {incr nd} {
-            
-    #create_logic_port domain_${nd}_powergate
 
-    create_logic_net domain_${nd}_powergate
+    create_logic_net "domain_${nd}_powergate"
+    create_logic_net "domain_${nd}_deepsleep"
 
     connect_logic_net "domain_${nd}_powergate" \
-    -ports "impl_i[$nd].powergate"
+    -ports "upf_signals[0][${nd}]"
 
-    #connect_logic_net domain_${nd}_powergate -reconnect \
-    #-ports "impl_i[$nd].powergate domain_${nd}_powergate"
+    connect_logic_net "domain_${nd}_deepsleep" \
+    -ports "upf_signals[1][${nd}]"
 
+    #connect_logic_net "domain_${nd}_powergate" \
+    #-ports "impl_i[${nd}].powergate"
 
 }
 
