@@ -13,9 +13,6 @@ for {set nd 0} {$nd < $PWR_DOMAINS} {incr nd} {
     connect_logic_net "domain_${nd}_deepsleep" \
     -ports "upf_signals[1][${nd}]"
 
-    #connect_logic_net "domain_${nd}_powergate" \
-    #-ports "impl_i[${nd}].powergate"
-
 }
 
 
@@ -24,10 +21,12 @@ for {set nd 0} {$nd < $PWR_DOMAINS} {incr nd} {
 #################
 
 for {set nd 0} {$nd < $PWR_DOMAINS} {incr nd} {
-    set on_expr  "!domain_${nd}_powergate"
+    set on_expr  "(!domain_${nd}_powergate) & (!domain_${nd}_deepsleep)"
+    set sleep_expr  "(!domain_${nd}_powergate) & domain_${nd}_deepsleep"
     set off_expr "domain_${nd}_powergate"
 
     add_power_state -domain PD_TC_SRAM_${nd} -update \
         -state "ON    -logic_expr {$on_expr}" \
+        -state "RET   -logic_expr {$sleep_expr}" \
         -state "OFF   -logic_expr {$off_expr}"
 }

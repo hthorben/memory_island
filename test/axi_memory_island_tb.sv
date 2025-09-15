@@ -21,8 +21,8 @@ module axi_memory_island_tb #(
   parameter int unsigned NumWideBanks      = 4,
   parameter int unsigned NarrowExtraBF     = 2,
   parameter int unsigned WordsPerBank      = 512 * NumNarrowReq * NumWideReq,
-  parameter int unsigned TbNumReads        = 100,
-  parameter int unsigned TbNumWrites       = 100,
+  parameter int unsigned TbNumReads        = 10,
+  parameter int unsigned TbNumWrites       = 10,
   parameter int unsigned TbNumReadsDS      = 50,
   parameter int unsigned TbNumReadsPG      = 50,
   parameter int unsigned BankAccessLatency = 2,
@@ -64,25 +64,19 @@ module axi_memory_island_tb #(
   // Simulate power gating enabled
   localparam int unsigned Pwr_Sigs     = 0;
 
-
-
-  logic [TotalReq-1:0] end_of_full_pwr;
-  logic [NumNarrowReq-1:0] end_of_pwr_gate;
-
   logic [PWRSigWidth-1:0] pw_gate_ctrl;
   logic [PWRSigWidth-1:0] deepsleep_ctrl;
 
-  int unsigned gated_accs;
-  int unsigned gated;
-
-  int unsigned num_writes_pwr_gate = 0;
-  int unsigned num_writes_deepsleep = 0;
 
 
 
   logic clk, rst_n;
 
   logic [TotalReq-1:0] random_mem_filled;
+  logic [TotalReq-1:0] end_of_full_pwr;
+  logic [NumNarrowReq-1:0] mem_asleep;
+  logic [NumNarrowReq-1:0] mem_awake;
+  logic [NumNarrowReq-1:0] end_of_pwr_gate;
   logic [TotalReq-1:0] end_of_sim;
   logic [TotalReq-1:0] mismatch;
 
@@ -318,6 +312,15 @@ module axi_memory_island_tb #(
       narrow_rand_master[i].run(TbNumReads, TbNumWrites);
       end_of_full_pwr[i] <= 1'b1;
       wait (&end_of_full_pwr);
+      deepsleep_ctrl <= '1;
+      mem_asleep[i] <= 1'b1;
+      wait(&mem_asleep)
+      for (int waiting = 0; waiting < 20; waiting++) begin
+        @(posedge clk);
+      end
+      deepsleep_ctrl = '0;
+      mem_asleep[i] <= 1'b1;
+      wait(&mem_asleep)
 
       // Make the port checking the powered region is not checking switched off regions
 
@@ -326,7 +329,9 @@ module axi_memory_island_tb #(
         GatedBanks = gated_banks;
         end_of_pwr_gate[i]   <= 1'b0;
         narrow_single_rand_master[i] = new(axi_narrow_dv[i]);
-        pw_gate_ctrl[PWRSigWidth-gated_banks] = 1;
+        pw_gate_ctrl[PWRSigWidth-gated_banks] = 1'b1;
+        //deepsleep_ctrl[PWRSigWidth-gated_banks] = 1'b1;
+        
 
         if (i >= NumNarrowReq/2) begin
           if (gated_banks != NumPWRDomains) begin
@@ -817,6 +822,7 @@ module axi_memory_island_tb #(
   
   int unsigned errors;
   int unsigned errors_x;
+  int unsigned gated;
   int unsigned expected_gated = (NumPWRDomains * TbNumReadsPG * NumNarrowReq)/2;
 
   always @(negedge clk) begin

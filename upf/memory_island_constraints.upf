@@ -48,6 +48,7 @@ add_power_state -domain PD_MEMORY_ISLAND \
 for {set nd 0} {$nd < $PWR_DOMAINS} {incr nd} {
 
     add_power_state PD_TC_SRAM_${nd} \
-    -state [list ON   -logic_expr [format {PD_TC_SRAM_%s.primary == ON} $nd]] \
-    -state [list OFF  -logic_expr [format {PD_TC_SRAM_%s.primary == OFF} $nd]]
+    -state [list ON    -logic_expr [format {PD_TC_SRAM_%s.primary == ON } $nd]] \
+    -state [list RET   -logic_expr [format {PD_TC_SRAM_%s.primary == RET} $nd]] \
+    -state [list OFF   -logic_expr [format {PD_TC_SRAM_%s.primary == OFF} $nd]]
 }
