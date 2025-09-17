@@ -88,8 +88,6 @@ module axi_memory_island_wrap #(
   input  logic     [NumUPFSignals-1:0] [NumPWRDomains-1:0]  upf_signals
 );
 
-  // The granularity of the power gating, i.e. how many physical banks are controlled by a signal (has to be a power of 2)
-  localparam int unsigned GatingGranularity = NWDivisor*NumWideBanks*NumPhysicalBanks/NumPWRDomains;
   // The amount of cables needed to achieve the desired gating granularity
   localparam int unsigned PWRSigWidth = NumPWRDomains;
 
@@ -272,7 +270,7 @@ module axi_memory_island_wrap #(
     .MemorySimInit       (MemorySimInit),
     .BankAccessLatency   (BankAccessLatency),
     .NumPhysicalBanks    (NumPhysicalBanks),
-    .GatingGranularity   (GatingGranularity),
+    .NumPWRDomains       (NumPWRDomains),
     .PWRSigWidth         (PWRSigWidth),
     .impl_in_t           (impl_in_t),
     .Pwr_Sigs            (Pwr_Sigs)

@@ -55,8 +55,8 @@ module memory_island_core #(
   parameter int unsigned BankAccessLatency = 1,
 
   parameter int unsigned NumPhysicalBanks = 32'd1,
-  parameter int unsigned GatingGranularity = NWDivisor*NumWideBanks,
-  parameter int unsigned PWRSigWidth = (NWDivisor*NumPhysicalBanks*NumWideBanks) / GatingGranularity,
+  parameter int unsigned NumPWRDomains = 1,
+  parameter int unsigned PWRSigWidth = NumPWRDomains,
 
   parameter type         impl_in_t    = logic,
   parameter int unsigned Pwr_Sigs     = 0
@@ -99,6 +99,9 @@ module memory_island_core #(
 
   localparam int unsigned WidePseudoBanks = NWDivisor * NarrowExtraBF;
   localparam int unsigned TotalBanks = NWDivisor * NumWideBanks;
+
+  // The granularity of the power gating, i.e. how many physical banks are controlled by a signal (has to be a power of 2)
+  localparam int unsigned GatingGranularity = NWDivisor*NumWideBanks*NumPhysicalBanks/NumPWRDomains;
 
   // Addr: GlobalBits _ InBankAddr _ WideBankSel _ SubBankSel _ Strb
   //                |            |          |  |            |-------- AddrNarrowWordBit
