@@ -77,8 +77,8 @@ module varlat_inorder_interco #(
   input  logic [NumOut-1:0][   DataWidth-1:0] rdata_i
 );
 
-  localparam int unsigned NumOutLog2 = $clog2(NumOut);
-  localparam int unsigned NumInLog2 = $clog2(NumIn);
+  localparam int unsigned NumOutLog2 = NumOut == 1 ? 1 : $clog2(NumOut);
+  localparam int unsigned NumInLog2 = NumIn == 1 ? 1 : $clog2(NumIn);
   localparam int unsigned AggDataWidth = 1 + BeWidth + AddrMemWidth + DataWidth;
   logic [ NumIn-1:0][AggDataWidth-1:0] data_agg_in;
   logic [NumOut-1:0][AggDataWidth-1:0] data_agg_out;
