@@ -59,7 +59,10 @@ module memory_island_core #(
   parameter int unsigned PWRSigWidth = NumPWRDomains,
 
   parameter type         impl_in_t    = logic,
-  parameter int unsigned Pwr_Sigs     = 0
+  parameter int unsigned Pwr_Sigs     = 0,
+
+  // Parameter to disable the interleaving inbetween the wide banks
+  parameter int unsigned RemoveWideBankInterleaving = 0
 ) (
   input logic clk_i,
   input logic rst_ni,
@@ -93,8 +96,14 @@ module memory_island_core #(
 
     assert ((NumPhysicalBanks != 0) && (NumPhysicalBanks & (NumPhysicalBanks - 1)) == 0)
       else $error("Parameter %m: %0d is not a power of 2", NumPhysicalBanks);
-    assert ((NumPhysicalBanks >= PWRSigWidth))
-      else $error("There are more controlable domains than banks");
+
+    if (RemoveWideBankInterleaving == 1) begin
+      assert ((NumPhysicalBanks * NumWideBanks >= PWRSigWidth))
+        else $error("There are more controlable domains than banks");
+    end else begin
+      assert ((NumPhysicalBanks >= PWRSigWidth))
+        else $error("There are more controlable domains than banks");
+    end
   end
 
   localparam int unsigned WidePseudoBanks = NWDivisor * NarrowExtraBF;
@@ -125,7 +134,7 @@ module memory_island_core #(
   localparam int unsigned AddrTopBit = AddrWideBankBit + $clog2(WordsPerBank);
 
   localparam int unsigned NarrowAddrMemWidth = AddrTopBit - AddrNarrowWideBit;
-
+  localparam int unsigned NarrowWideBankSelWidth = AddrWideBankBit - AddrNarrowWideBit;
 
   localparam int unsigned NarrowIntcBankLat = BankAccessLatency + SpillNarrowReqRouted +
       SpillNarrowRspRouted + SpillReqBank + SpillRspBank;
@@ -229,6 +238,28 @@ module memory_island_core #(
       wide_priority_d, wide_priority_q;
 
 
+  logic [NumWideReq-1:0][AddrWidth-1:0] wide_addr_connector;
+  logic [NumNarrowReq-1:0][AddrWidth-1:0] narrow_addr_connector;
+
+  if (RemoveWideBankInterleaving == 1) begin : wide_interleaving_removal
+
+    for (genvar i = 0; i < NumWideReq; i = i + 1) begin
+      assign wide_addr_connector [i] [AddrTopBit-NarrowAddrMemWidth-$clog2(NarrowExtraBF)-1:0]     = wide_addr_i [i] [AddrTopBit-NarrowAddrMemWidth-$clog2(NarrowExtraBF)-1:0];
+      assign wide_addr_connector [i] [AddrTopBit-BankAddrMemWidth-1:AddrTopBit-NarrowAddrMemWidth-$clog2(NarrowExtraBF)] = wide_addr_i [i] [AddrTopBit-1:AddrTopBit-NarrowWideBankSelWidth-$clog2(NarrowExtraBF)];
+      assign wide_addr_connector [i] [AddrTopBit-1:AddrTopBit-BankAddrMemWidth]                    = wide_addr_i [i] [AddrTopBit-NarrowWideBankSelWidth-$clog2(NarrowExtraBF):AddrTopBit-NarrowAddrMemWidth-$clog2(NarrowExtraBF)];
+      assign wide_addr_connector [i] [AddrWidth-1:AddrTopBit]                                      = wide_addr_i [i] [AddrWidth-1:AddrTopBit];
+    end
+    for (genvar i = 0; i < NumNarrowReq; i = i + 1) begin
+      assign narrow_addr_connector [i] [AddrTopBit-NarrowAddrMemWidth-$clog2(NarrowExtraBF)-1:0]                           = narrow_addr_i [i] [AddrTopBit-NarrowAddrMemWidth-$clog2(NarrowExtraBF)-1:0];
+      assign narrow_addr_connector [i] [AddrTopBit-BankAddrMemWidth-1:AddrTopBit-NarrowAddrMemWidth-$clog2(NarrowExtraBF)] = narrow_addr_i [i] [AddrTopBit-1:AddrTopBit-NarrowWideBankSelWidth-$clog2(NarrowExtraBF)];
+      assign narrow_addr_connector [i] [AddrTopBit-1:AddrTopBit-BankAddrMemWidth]                    = narrow_addr_i [i] [AddrTopBit-NarrowWideBankSelWidth-$clog2(NarrowExtraBF):AddrTopBit-NarrowAddrMemWidth-$clog2(NarrowExtraBF)];
+      assign narrow_addr_connector [i] [AddrWidth-1:AddrTopBit]                                      = narrow_addr_i [i] [AddrWidth-1:AddrTopBit];
+    end
+  end else begin 
+    assign wide_addr_connector = wide_addr_i;
+    assign narrow_addr_connector = narrow_addr_i;
+  end
+
   for (genvar i = 0; i < NumNarrowReq; i++) begin : gen_narrow_entry_cuts
     mem_req_multicut #(
       .DataWidth(NarrowDataWidth),
@@ -240,7 +271,7 @@ module memory_island_core #(
 
       .req_i  (narrow_req_i[i]),
       .gnt_o  (narrow_gnt_o[i]),
-      .addr_i (narrow_addr_i[i]),
+      .addr_i (narrow_addr_connector[i]),
       .we_i   (narrow_we_i[i]),
       .wdata_i(narrow_wdata_i[i]),
       .strb_i (narrow_strb_i[i]),
@@ -280,7 +311,7 @@ module memory_island_core #(
 
       .req_i  (wide_req_i[i]),
       .gnt_o  (wide_gnt_o[i]),
-      .addr_i (wide_addr_i[i]),
+      .addr_i (wide_addr_connector[i]),
       .we_i   (wide_we_i[i]),
       .wdata_i(wide_wdata_i[i]),
       .strb_i (wide_strb_i[i]),
@@ -384,7 +415,7 @@ module memory_island_core #(
     );
   end
 
-  localparam int unsigned NarrowWideBankSelWidth = AddrWideBankBit - AddrNarrowWideBit;
+  
 
   if (WidePriorityWait == 0) begin : gen_narrow_static_gnt
     // narrow gnt always set

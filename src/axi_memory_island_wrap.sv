@@ -73,7 +73,10 @@ module axi_memory_island_wrap #(
   // Parameter to control of the tc_sra banks should simulate power gating
   parameter int unsigned Pwr_Sigs     = 0,
 
-  parameter int unsigned NumUPFSignals = 0
+  parameter int unsigned NumUPFSignals = 0,
+
+  // Parameter to disable the interleaving inbetween the wide banks
+  parameter int unsigned RemoveWideBankInterleaving = 0
 ) (
   input logic clk_i,
   input logic rst_ni,
@@ -273,7 +276,8 @@ module axi_memory_island_wrap #(
     .NumPWRDomains       (NumPWRDomains),
     .PWRSigWidth         (PWRSigWidth),
     .impl_in_t           (impl_in_t),
-    .Pwr_Sigs            (Pwr_Sigs)
+    .Pwr_Sigs            (Pwr_Sigs),
+    .RemoveWideBankInterleaving (RemoveWideBankInterleaving)
   ) i_memory_island (
     .clk_i,
     .rst_ni,

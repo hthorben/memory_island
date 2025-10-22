@@ -5,9 +5,10 @@ upf_version 3.0
 ## Parameters ##
 ################
 set WIDE_BANKS 4
-set NAR_BANKS 16
+set NAR_BANKS 8
 set PHYS_BANKS 64
-set PWR_DOMAINS 8
+set PWR_DOMAINS 16
+set WIDE_BANKE_INTERLEAVD 1
 
 set design_top axi_memory_island_tb/i_dut
 
