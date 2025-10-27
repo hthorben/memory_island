@@ -60,6 +60,8 @@ module memory_island_core #(
 
   parameter type         impl_in_t    = logic,
   parameter int unsigned Pwr_Sigs     = 0,
+  parameter int unsigned NumUPFSignals     = 1,
+  parameter int unsigned NUM_PWR_DOMAINS     = 1,
 
   // Parameter to disable the interleaving inbetween the wide banks
   parameter int unsigned RemoveWideBankInterleaving = 0
@@ -87,7 +89,8 @@ module memory_island_core #(
   output logic [NumWideReq-1:0]                    wide_rvalid_o,
   output logic [NumWideReq-1:0][WideDataWidth-1:0] wide_rdata_o,
 
-  input  impl_in_t [PWRSigWidth-1:0]     impl_i
+  input  impl_in_t [PWRSigWidth-1:0]     impl_i,
+  input  logic     [NumUPFSignals-1:0] [NUM_PWR_DOMAINS-1:0]  upf_signals
 );
 
   initial begin
