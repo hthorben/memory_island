@@ -108,7 +108,8 @@ module varlat_inorder_interco #(
     logic [NumOut-1:0] out_fifo_gnt, out_fifo_gnt_n;
 
     assign fifo_gnt     = ~fifo_gnt_n;
-    assign gnt_o        = xbar_gnt & fifo_gnt;
+    //assign gnt_o        = xbar_gnt & fifo_gnt;
+    assign gnt_o        = xbar_gnt & fifo_gnt & req_i;
 
     assign out_fifo_gnt = ~out_fifo_gnt_n;
 
