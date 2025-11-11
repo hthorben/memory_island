@@ -89,6 +89,7 @@ module memory_island_core #(
   output logic [NumWideReq-1:0]                    wide_rvalid_o,
   output logic [NumWideReq-1:0][WideDataWidth-1:0] wide_rdata_o,
 
+  input  logic     [NumWideBanks-1:0] [NumPhysicalBanks-1:0] disable_auto_clk_gate,
   input  impl_in_t [PWRSigWidth-1:0]     impl_i,
   input  logic     [NumUPFSignals-1:0] [NUM_PWR_DOMAINS-1:0]  upf_signals
 );
@@ -720,7 +721,8 @@ module memory_island_core #(
       impl_in_t [NumPhysicalBanks-1:0] impl_narrow;
 
       for (genvar k = 0; k < NumPhysicalBanks; k++) begin : assign_pwr_control_sigs
-        assign impl_narrow[k] = impl_i[ (j/GatingGranularity) + ((k*NWDivisor*NumWideBanks)/GatingGranularity) + ((i*NWDivisor) / GatingGranularity)];
+        //assign impl_narrow[k] = impl_i[ (j/GatingGranularity) + ((k*NWDivisor*NumWideBanks)/GatingGranularity) + ((i*NWDivisor) / GatingGranularity)];
+        assign impl_narrow[k] = impl_i[(NUM_PWR_DOMAINS * (k + i * NumPhysicalBanks * NWDivisor))/(NumWideBanks * NumPhysicalBanks * NWDivisor)];
       end
 
       // Memory bank
@@ -744,7 +746,8 @@ module memory_island_core #(
         .be_i   (strb_bank_spill[i][j]),
         .rdata_o(rdata_bank_spill[i][j]),
 
-        .impl_i (impl_narrow)
+        .impl_i (impl_narrow),
+        .disable_auto_clk_gate(disable_auto_clk_gate[i])
       );
 
       // Shift reg for wide rvalid
