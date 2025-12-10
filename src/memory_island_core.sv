@@ -722,7 +722,7 @@ module memory_island_core #(
 
       for (genvar k = 0; k < NumPhysicalBanks; k++) begin : assign_pwr_control_sigs
         //assign impl_narrow[k] = impl_i[ (j/GatingGranularity) + ((k*NWDivisor*NumWideBanks)/GatingGranularity) + ((i*NWDivisor) / GatingGranularity)];
-        assign impl_narrow[k] = impl_i[(NUM_PWR_DOMAINS * (k + i * NumPhysicalBanks * NWDivisor))/(NumWideBanks * NumPhysicalBanks * NWDivisor) + k];
+        assign impl_narrow[k] = impl_i[(NUM_PWR_DOMAINS * k)/(2*NumWideBanks * NumPhysicalBanks * NWDivisor) + (NUM_PWR_DOMAINS * (i * NumPhysicalBanks * NWDivisor))/(NumWideBanks * NumPhysicalBanks * NWDivisor) + k];
       end
 
       // Memory bank
